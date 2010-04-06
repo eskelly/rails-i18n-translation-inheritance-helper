@@ -6,6 +6,9 @@ module I18nTranslationHelper
   def self.included(base) 
     base.module_eval do
       class << self
+        
+        class MissingLocalizationData < ArgumentError; end
+        
         def translate_with_fallback(text, options = {})
           default = options.delete(:default)
           locale_lookup_chain(options[:locale] || locale).each do |lookup_locale|
@@ -25,6 +28,27 @@ module I18nTranslationHelper
           translation = "translation missing: #{options[:locale]}, #{text}"
         ensure
           return translation_found, translation
+        end
+        
+        def localize_with_fallback(object, options = {})
+          locale_lookup_chain(options[:locale] || locale).each do |lookup_locale|
+            localization_found, localization = attempt_localization(object, options.merge(:locale => lookup_locale))
+            return localization if localization_found
+          end
+          
+          localize_without_fallback(object, options)
+        end
+        
+        def attempt_localization(object, options = {})
+          puts "Attempting localiztion of '#{object.inspect}' with locale '#{options[:locale]}'." if options[:debug]
+          localization = localize_without_fallback(object, options)
+          localization_found = options[:locale]
+          raise MissingLocalizationData if localization.to_s == (options[:format] || :default).to_s
+        rescue MissingLocalizationData, I18n::MissingTranslationData
+          localization_found = nil
+          localization = "localization missing: #{options[:locale]}, #{object.inspect}"
+        ensure
+          return localization_found, localization
         end
 
         def root_locale(locale)
@@ -52,9 +76,12 @@ module I18nTranslationHelper
           end
           @i18n_fallback_locales[locale.to_sym]
         end
-          
+        
         alias_method_chain :translate, :fallback
         alias_method :t, :translate_with_fallback
+        
+        alias_method_chain :localize, :fallback
+        alias_method :l, :localize_with_fallback
       end
     end 
   end

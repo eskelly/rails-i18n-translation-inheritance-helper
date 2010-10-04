@@ -3,9 +3,16 @@ module I18nTranslationHelper
   #   require 'i18n_helper'
   #   I18n.send :include, I18nHelper
 
-  def self.included(base) 
+  def self.included(base)
+    
     base.module_eval do
       class << self
+        
+        attr_reader :use_sister_locales
+        def use_sister_locales=(value)
+          @use_sister_locales = value
+          @i18n_fallback_locales = nil
+        end
         
         class MissingLocalizationData < ArgumentError; end
         
@@ -71,7 +78,7 @@ module I18nTranslationHelper
             available_locales.each do |l|
               current_base_locale = root_locale(l)
               locales << l if current_base_locale && current_base_locale.to_sym == base_locale
-            end if respond_to?(:available_locales)
+            end if respond_to?(:available_locales) && self.use_sister_locales
             @i18n_fallback_locales[locale.to_sym] = locales.uniq
           end
           @i18n_fallback_locales[locale.to_sym]
@@ -83,6 +90,10 @@ module I18nTranslationHelper
         alias_method_chain :localize, :fallback
         alias_method :l, :localize_with_fallback
       end
-    end 
+    end
+    
+    # default settings
+    base.use_sister_locales = true
+    
   end
 end

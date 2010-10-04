@@ -33,6 +33,8 @@ NOTE
 To lookup the 'sister' locales requires that the version of I18n 
 installed supports the #available_locales call.
 
+To disable the use of sister locales, add `I18n.use_sister_locales = false` to an initializer.
+
 This call is supported in the I18n gem version: svenfuchs-i18n (0.1.2) or in sven's
 github repository.  You can also add the required functions by adding the following
 to an initializer in your rails project:

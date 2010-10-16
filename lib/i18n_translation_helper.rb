@@ -97,3 +97,5 @@ module I18nTranslationHelper
     
   end
 end
+
+I18n.send :include, I18nTranslationHelper

@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
   s.name = 'i18n_translation_helper'
-  s.version = '0.0.1'
+  s.version = '0.0.2'
   s.summary = "I18N translation inheritance"
   s.description = %{Adds a fallback chain to translation lookup in Rails i18n.}
   s.files = Dir['lib/**/*.rb'] + Dir['test/**/*.rb']

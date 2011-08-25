@@ -4,28 +4,28 @@ module I18nTranslationHelper
   #   I18n.send :include, I18nHelper
 
   def self.included(base)
-    
     base.module_eval do
       class << self
-        
-        attr_reader :use_sister_locales
-        def use_sister_locales=(value)
-          @use_sister_locales = value
-          @i18n_fallback_locales = nil
-        end
-        
-        class MissingLocalizationData < ArgumentError; end
-        
         def translate_with_fallback(text, options = {})
           default = options.delete(:default)
+          result = {}
+
           locale_lookup_chain(options[:locale] || locale).each do |lookup_locale|
             translation_found, translation = attempt_translation(text, options.merge(:locale => lookup_locale))
-            return translation if translation_found
+
+            if text.is_a?(String) && text.end_with?(".") # We want to look for all strings starting with <text> in the locale chain
+              result = translation.deep_merge(result) if translation_found
+            else
+              return translation if translation_found
+            end
           end
+
+          return result unless result.empty?
+
           # Ensure 'translation missing' return is exactly the default behaviour
           translate_without_fallback(text, options.merge(:default => default))
         end
-        
+
         def attempt_translation(text, options = {})
           puts "Attempting translation of '#{text}' with locale '#{options[:locale]}'." if options[:debug]
           translation = translate_without_fallback(text, options.merge(:raise => true))
@@ -36,32 +36,11 @@ module I18nTranslationHelper
         ensure
           return translation_found, translation
         end
-        
-        def localize_with_fallback(object, options = {})
-          locale_lookup_chain(options[:locale] || locale).each do |lookup_locale|
-            localization_found, localization = attempt_localization(object, options.merge(:locale => lookup_locale))
-            return localization if localization_found
-          end
-          
-          localize_without_fallback(object, options)
-        end
-        
-        def attempt_localization(object, options = {})
-          puts "Attempting localiztion of '#{object.inspect}' with locale '#{options[:locale]}'." if options[:debug]
-          localization = localize_without_fallback(object, options)
-          localization_found = options[:locale]
-          raise MissingLocalizationData if localization.to_s == (options[:format] || :default).to_s
-        rescue MissingLocalizationData, I18n::MissingTranslationData
-          localization_found = nil
-          localization = "localization missing: #{options[:locale]}, #{object.inspect}"
-        ensure
-          return localization_found, localization
-        end
 
         def root_locale(locale)
           locale.to_s.split('-')[0]
         end
-        
+
         def locate(text, options = {})
           locale_lookup_chain(options[:locale] || locale).each do |lookup_locale|
             translation_found, translation = attempt_translation(text, options.merge(:locale => lookup_locale))
@@ -69,7 +48,7 @@ module I18nTranslationHelper
           end
           return nil
         end
-        
+
         def locale_lookup_chain(locale)
           @i18n_fallback_locales ||= {}
           unless @i18n_fallback_locales[locale.to_sym]
@@ -78,24 +57,16 @@ module I18nTranslationHelper
             available_locales.each do |l|
               current_base_locale = root_locale(l)
               locales << l if current_base_locale && current_base_locale.to_sym == base_locale
-            end if respond_to?(:available_locales) && self.use_sister_locales
+            end if respond_to?(:available_locales)
             @i18n_fallback_locales[locale.to_sym] = locales.uniq
           end
           @i18n_fallback_locales[locale.to_sym]
         end
-        
+
         alias_method_chain :translate, :fallback
         alias_method :t, :translate_with_fallback
-        
-        alias_method_chain :localize, :fallback
-        alias_method :l, :localize_with_fallback
       end
     end
-    
-    # default settings
-    base.use_sister_locales = true
-    
   end
 end
 
-I18n.send :include, I18nTranslationHelper
